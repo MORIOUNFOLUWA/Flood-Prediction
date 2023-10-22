@@ -1,0 +1,437 @@
+---
+primary_colour: '#003366'
+secondary_colour: '#e26241'
+title_textsize: '125pt'
+poster_width: '34.1in'
+poster_height: '55.1in'
+main_topsize: 0.12 #percent coverage of the poster
+main_bottomsize: 0.01
+
+#ESSENTIALS
+title:
+ '**Applied AI (Machine Learning Methods) in Flood Prediction **'
+ 
+main_findings:
+  - "**Application of Machine learning models in the prediction of floods (Using Bangladesh as a case Study**)"
+  
+author:
+  - name: '**Ayomiposi Adebayo**'
+    affil: 1
+    main: true
+    email: 'adebayoayomiposi25@gmail.com'
+affiliation:
+  - num: 1
+    address: Department of Data Science and Business Analytics, University of Plymouth
+  
+output: 
+  posterdown::posterdown_betterport:
+    self_contained: false
+    pandoc_args: --mathjax
+    number_sections: false
+bibliography: "references.bib"
+link-citations: true
+knit: pagedown::chrome_print
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      tidy = FALSE,
+                      message = FALSE,
+                      fig.align = 'center',
+                      out.width = "100%")
+options(knitr.table.format = "html") 
+```
+
+# Introduction
+
+Flood has been identified as one of the most occurring natural disasters that results in the loss of human lives, farmlands, agriculture, households, socio-economic systems, and the environment which in turn affects the economy of nations at large[@parag_flood_2021]. Machine learning methods has been efficient on providing flood prediction models using findings from data to develop a model that could be replicated on new datasets based on the accuracy and precision of the prediction model[@felix_flood_2019]. The most common cities that has been recorded to be prone to flooding are India, Bangladesh, and China. Every year, roughly 4.84 million people in India, 3.84 million people in Bangladesh and 3.28 million people in China are affected by Flooding. Over 80% of lands in Bangladesh are prone to floods and flooding was recorded 78times between 1971 and 2014 killing about 41,783 people[@dewan_societal_2015].  
+
+```{r, include=FALSE}
+knitr::write_bib(c('posterdown', 'rmarkdown','pagedown'), 'packages.bib')
+```
+
+# Machine Learning Models Employed for the Prediction of Floods 
+Machine Learning Models used for Flood Prediction in this study are:
+
+•	K-Nearest Neighbor(KNN): This is a non-parametric supervised machine learning method that is most commonly used for both regression and classification issues. This model checks for the similarities  between a new data from an existing data and place the new data points in classes that are similar to the existing data[@sankaranarayanan_flood_2019]
+
+•	Logistic Regression: Logistic regression is a statistical approach for analyzing the interaction of dependent and one or more independent variables in linear and nonlinear regression [@grover_advantages_2020]. Logistic regression is employed to forecast the likelihood of a flood happening depending on several elements involving rainfall, the humidity of the soil, and river velocity[@lee_scenario-based_2021].
+
+•	Decision Tree: A decision tree is a supervised classification machine learning technique that uses a tree to illustrate the basic trends in a dataset and how they interact, with each branch representing potential decision-making or likelihood of an event's fate. Potential flood risks can be discovered by simulating various scenarios and actions[@tehrany_spatial_2013]
+
+
+# Methods and Results
+
+**Dataset Extraction and Preparation**: The historical weather data was from Bangladesh Meteorological Department (BMD) and uploaded by some researchers on Kaggle. The data was collected from 32 stations and contains 20,544 observations within year 1948-2013. Important features in the dataset includes: Rainfall, Cloud Coverage, Rainfall, Flood status, Minimum Temperature, Maximum Temperature, Relative Humidity, Wind speed, Month when the flood occurred etc[@reza_65_2020].  
+
+**Below shows the distribution of flood by Year, Rainfall and Month**
+
+```{r, include=FALSE,eval=TRUE,message=FALSE,warning=FALSE}
+library(readxl)
+library(ISLR)
+setwd("C:/Users/adeba/Downloads/PRACTICE")
+
+data <- read.csv("Bangladesh_new.csv")
+head(data)
+
+dim(data) 
+#there are 20,544rows (observations) and 19 columns (variables)
+
+head(data) # display only the first few rows of the data set
+attach(data)   # make the variables in the data set available in the workspace
+table(Flood)
+
+# Create a data frame for the columns needed for the analysis
+data <- data.frame(Station_Names, Year, Cloud_Coverage, Rainfall, Wind_Speed, Max_Temp, Flood, Month)
+head(data) # display only the first few rows of the dataset
+
+#plot frequency chart
+#Load required packages
+library(ggplot2)
+library(dplyr)
+
+# Create a data frame for the columns needed for the analysis
+data <- data.frame(Wind_Speed, Max_Temp, Flood, Cloud_Coverage, Year, Rainfall, Month)
+names(data)
+
+# Plotting the histogram(Summary Statistics-Frequency)
+data$year_group <- cut(data$Year, breaks=c(1940, 1950, 1960, 1970, 1980, 1990, 2000, Inf),
+                       labels=c("1940-1950", "1950-1960", "1960-1970", "1970-1980", 
+                                "1980-1990", "1990-2000", "2000 and above"))
+attach(data)
+head(year_group)
+
+# Assuming your dataset is named "data" and the Flood column contains binary values (0/1)
+data$flood_status <- ifelse(data$Flood == 1, "Yes", "No")
+
+# Filter data for flood_status = Yes
+flood_data_yes <- subset(data, flood_status == "Yes")
+
+```
+
+```{r,  fig.align='center',fig.show='hold',echo=FALSE,message=FALSE,warning=FALSE, out.width='100%'}
+# Plot histogram showing the frequency of floods observed annually in Bangladesh
+ggplot(flood_data_yes, aes(x = year_group, fill = flood_status)) +
+  geom_bar() +
+  labs(x = "Year Group", y = "Number of Floods") +
+  ggtitle("Number of Floods in Bangladesh experienced from 1948-2013") +
+  scale_fill_manual(values = c("red", "white")) +
+  theme(legend.position = "none")
+```
+
+**Dataset Processing**:  This involves feature engineering, encoding, and scaling. The features of interest in the data were changed into numeric variable types, missing values were replaced with zero, flood status variable was encoded into binary values “0 and 1” against “Yes and No”. The dataset was then splitted using the ratio 70:30 to train and test set. 
+
+
+**Feature Selection**: The features employed in this prediction model were selected using correlation analysis to establish a relationship between the dependent and independent variables using Pearson and Spearman Rank Correlation. Rainfall and Cloud Coverage variables were selected as they had correlation coefficient values close to 1 according to the table below:
+
+```{r, include=FALSE,eval=TRUE,message=FALSE,warning=FALSE}
+
+# Change the data to numeric format before calculating correlation coefficients
+data$Flood <- as.numeric(data$Flood)
+data$Rainfall <- as.numeric(data$Rainfall)
+data$Cloud_Coverage <- as.numeric(data$Cloud_Coverage)
+data$Month <- as.numeric(data$Month)
+data$Wind_Speed <- as.numeric(data$Wind_Speed)
+data$Max_Temp <- as.numeric(data$Max_Temp)
+
+# Create a data frame for the columns needed for the analysis
+data <- data.frame(Flood, Cloud_Coverage, Rainfall, Month)
+names(data)
+
+## remove missing values
+data <- na.omit(data)
+
+names(data)
+dim(data)
+
+# calculate Pearson correlation coefficients
+corr_flood <- cor(data[, -1], data$Flood, method = "pearson")
+corr_flood
+
+sorted_corr_flood <- corr_flood[order(corr_flood, decreasing = TRUE),]
+
+##Spearman rank's selection
+corr_spearman <- cor(data[, -1], data$Flood, method = "spearman")
+corr_spearman
+
+spearman_corr_flood <- corr_spearman[order(corr_spearman, decreasing = TRUE),]
+
+```
+
+**The results gotten from the Pearson Correlation Analysis:** 
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+sorted_corr_flood
+```
+
+**The results gotten from the Spearman Rank Correlation Analysis:**
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+spearman_corr_flood
+```
+
+**Exploratory Analysis**: The two selected features were then subjected to some exploratory analysis to shows the existing relationship between the selected independent variables(Rainfall and Cloud_Coverage) and the dependent variable (Flood_status) using boxplot. 
+
+Results derived from the plots below showed that cities with more rainfall and Cloud_Coverage had encountered more flooding compared to the cities with less rainfall and Cloud_Coverage.
+
+```{r echo=FALSE, fig.align='center', fig.cap="Boxplot Showing the distribution of Rainfall and Cloud Coverage against Flood", fig.show='hold', message=FALSE, warning=FALSE, out.width='100%'}
+#Exploratory Analysis for Machine learning 
+#Rainfall and flooding Variables
+
+par(mfrow = c(1, 2)) # set the layout to display 2 plots side-by-side
+boxplot(Rainfall ~ Flood, xlab = "Flood", ylab = "Rainfall", 
+        col = c("lightblue", "orange"))
+boxplot(Cloud_Coverage ~ Flood, xlab = "Flood", ylab = "Cloud Coverage", 
+        col = c("red", "green"))
+
+```
+
+The flood column was presented using a scatter plot
+```{r echo=FALSE, fig.align='center', fig.cap="Scatterplot Showing the distribution of Flood by Rainfall and Cloud Coverage", fig.show='hold', message=FALSE, warning=FALSE, out.width='100%'}
+#visualize the data using scatter-plot
+def.col <- rep('blue', 10000)        # vector of colours
+def.col[Flood == '1'] <- 'red'  # red colour for default=Yes
+
+par(mfrow = c(1,1))
+plot(Rainfall, Cloud_Coverage, col = def.col, xlab = 'Rainfall (cm)', 
+     ylab = 'Cloud_Coverage', pch = 20)
+legend(x = 'topright', legend = c('No', 'Yes'), col = c('blue','red'), pch = 15)
+```
+
+**Machine Learning Models**: Binary Logistic Regression, Decision Tree Classifier and K-Nearest Neighbors were the models employed to predict flood in the training set. This model was then deployed in the test data and evaluated using the accuracy, precision, recall and f1-score metrics.
+
+
+```{r, include=FALSE,eval=TRUE,message=FALSE,warning=FALSE}
+# Load required libraries
+library(e1071)
+library(doParallel)
+library(foreach)
+library(dplyr)
+library(caret)
+library(pROC)
+library(ggplot2)
+
+
+# Split the dataset into training and testing sets
+set.seed(123)
+train_index <- sample(1:nrow(data), 0.7*nrow(data))
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+
+##View the Data
+train_data
+test_data
+test_data$Rainfall <- round(as.numeric(test_data$Rainfall))
+test_data
+
+##Conducting Logistic Regression Model Analysis
+
+# Fit a logistic regression model
+log_model <- glm(Flood ~ Cloud_Coverage + Rainfall, data = train_data, family = "binomial")
+log_model
+
+#The Cloud_Coverage coefficient (0.20605) suggests that there is a positive relationship between the Cloud_Coverage variable and the log-odds of the response variable, 
+#Also, the Rainfall coefficient (0.01713) suggests that there is also a positive relationship between the Rainfall variable and the log-odds of the response variable.
+
+# Make predictions on test data
+log_predictions <- predict(log_model, newdata = test_data, type = "response")
+log_predictions
+
+test_data$Flood
+
+# Evaluate model performance
+threshold <- 0.3
+log_predicted_classes <- ifelse(log_predictions > threshold, 1, 0)
+log_actual_classes <- test_data$Flood
+
+#To confirm if the predicted classes and actual classes have same length
+print(length(log_predicted_classes))
+print(length(log_actual_classes))
+
+log_confusion_matrix <- table(log_predicted_classes, log_actual_classes)
+log_confusion_matrix
+log_accuracy <- sum(diag(log_confusion_matrix))/sum(log_confusion_matrix)
+
+log_TP <- log_confusion_matrix[2,2]
+log_TP
+log_FP <- log_confusion_matrix[1,2]
+log_FP
+log_FN <- log_confusion_matrix[2, 1]
+log_FN
+
+log_precision <- log_TP / (log_TP + log_FP)
+log_recall <- log_TP / (log_TP + log_FN)
+log_f1_score <- 2 * (log_precision * log_recall) / (log_precision + log_recall)
+
+print(paste0("Accuracy: ", log_accuracy))
+print(paste0("Precision: ", log_precision))
+print(paste0("Recall: ", log_recall))
+print(paste0("F1-score: ", log_f1_score))
+
+```
+
+```{r, include=FALSE,eval=TRUE,message=FALSE,warning=FALSE}
+###Decision Trees##
+# Load the required package
+library(rpart)
+
+# Build the decision tree model
+tree_model <- rpart(Flood ~ Cloud_Coverage + Rainfall, data = train_data, method = "class")
+printcp(tree_model)
+plot(tree_model)
+
+##Show in a graph to explain the prediction
+library(rpart.plot)
+tree_model <- rpart(Flood ~ Cloud_Coverage+ Rainfall, data = train_data, method = "class")
+printcp(tree_model)
+rpart.plot(tree_model)
+
+
+# Make predictions on the test data
+tree_predicted <- predict(tree_model, newdata = test_data, type = "class")
+
+# Calculate the accuracy of the model
+tree_accuracy <- mean(tree_predicted == test_data$Flood)
+
+# Evaluate model performance
+threshold <- 0.3
+predicted_numeric <- as.numeric(as.character(tree_predicted))
+tree_predicted_classes <- ifelse(predicted_numeric > threshold, 1, 0)
+tree_actual_classes <- test_data$Flood
+
+#To confirm if the predicted classes and actual classes have same length
+print(length(tree_predicted_classes))
+print(length(tree_actual_classes))
+
+tree_confusion_matrix <- table(tree_predicted_classes, tree_actual_classes)
+tree_confusion_matrix
+tree_accuracy <- sum(diag(tree_confusion_matrix))/sum(tree_confusion_matrix)
+
+tree_TP <- tree_confusion_matrix[2,2]
+tree_TP
+tree_FP <- tree_confusion_matrix[1,2]
+tree_FP
+tree_FN <- tree_confusion_matrix[2, 1]
+tree_FN
+
+tree_precision <- tree_TP / (tree_TP + tree_FP)
+tree_recall <- tree_TP / (tree_TP + tree_FN)
+tree_f1_score <- 2 * (tree_precision * tree_recall) / (tree_precision + tree_recall)
+
+print(paste0("Precision: ", tree_precision))
+print(paste0("Recall: ", tree_recall))
+print(paste0("F1-score: ", tree_f1_score))
+print(paste0("Accuracy: ", tree_accuracy))
+```
+
+```{r, include=FALSE,eval=TRUE,message=FALSE,warning=FALSE}
+##KNN Model
+
+library(class)
+
+# train KNN model
+k <- 10 # number of neighbors
+knn_model <- knn(train_data[, c("Cloud_Coverage", "Rainfall")], 
+                 test_data[, c("Cloud_Coverage", "Rainfall")], 
+                 train_data$Flood, 
+                 k)
+knn_model
+
+# evaluate model performance
+knn_confusion_matrix <- table(knn_model, test_data$Flood)
+knn_confusion_matrix
+
+knn_accuracy <- sum(diag(knn_confusion_matrix)) / sum(knn_confusion_matrix)
+knn_accuracy
+
+knn_precision <- knn_confusion_matrix[2, 2] / sum(knn_confusion_matrix[, 2])
+knn_precision
+
+knn_recall <- knn_confusion_matrix[2, 2] / sum(knn_confusion_matrix[2, ])
+knn_recall
+
+knn_f1_score <- 2 * knn_precision * knn_recall / (knn_precision + knn_recall)
+knn_f1_score
+
+
+# print evaluation metrics
+cat("Accuracy:", round(knn_accuracy, 4), "\n")
+cat("Precision:", round(knn_precision, 4), "\n")
+cat("Recall:", round(knn_recall, 4), "\n")
+cat("F1-score:", round(knn_f1_score, 4), "\n")
+
+```
+
+```{r echo=FALSE, fig.align='center', fig.show='hold', message=FALSE, warning=FALSE, out.width='100%'}
+library(ggplot2)
+library(tidyr)
+
+accuracy <- c(0.93, 0.94, 0.94)
+recall <- c(0.78, 0.87, 0.87)
+precision <- c(0.89, 0.82, 0.83)
+f1_score <- c(0.83, 0.82, 0.85)
+models <- c("BLR", "DT", "KNN")
+
+# Creating a data frame for the metrics
+metrics <- data.frame(Model = c("Model A", "Model B", "Model C"),
+                      Precision = precision,
+                      Recall = recall,
+                      Accuracy = accuracy,
+                      F1_Score = f1_score)
+
+# Reshaping the data frame to long format for plotting
+metrics_long <- gather(metrics, Metric, Value, -Model)
+
+# Plotting the metrics using a line graph
+ggplot(metrics_long, aes(x = Metric, y = Value, color = Model, group = Model)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Performance Metrics for Machine Learning Models",
+       x = "Metric",
+       y = "Value") +
+  scale_color_manual(values = c("#F8766D", "#00BFC4", "#7CAE00")) +
+  theme_minimal()
+```
+
+KNN Model was chosen as the most appropriate model because it had the highest accuracy score, Recall and F-measure score.The F-measure score provides a balance between the recall(minimize false negatives) and precision (minimize false positives) while accuracy checks how accurate the classification of the prediction model. 
+
+The most appropriate K was 15 with an accuracy of 94% and the classification output is displayed below:
+
+
+```{r echo=FALSE, fig.align='center', fig.cap="KNN Classification using K=15", fig.show='hold', message=FALSE, warning=FALSE, out.width='100%'}
+library(class)
+library(ggplot2)
+library(caret)
+
+# Train the KNN model
+
+k <- 15
+knn_model <- knn(train_data[, c("Cloud_Coverage", "Rainfall")], 
+                 test_data[, c("Cloud_Coverage", "Rainfall")], 
+                 train_data$Flood, 
+                 k)
+
+# Create a data frame with the test data and predicted labels
+classified_points <- data.frame(test_data[, c("Rainfall", "Cloud_Coverage")], Flood = as.factor(knn_model))
+
+ggplot(classified_points, aes(x = Rainfall, y = Cloud_Coverage, color = Flood)) +
+  geom_point() +
+  labs(x = "Rainfall",
+       y = "Cloud Coverage",
+       color = "Flood Status") +
+  scale_color_manual(values = c("blue", "orange")) +
+  theme_minimal()
+
+
+```
+
+# Conclusion
+
+- This study sought to predict floods using Decision Tree, Bayesian Logistic Regression, and K-Nearest Neighbors Models that has been used in previous studies for flood prediction. The dataset was processed based on the intended purpose of the analysis while the relevant features were determined using correlation analysis. Overall, all the models performed excellently, K-Nearest Neighbors (KNN) demonstrated the highest accuracy, recall, and F1 score, making it the most suitable model for flood prediction in this study. However, it is important to note that the dataset used in this study covered a period from 1948 to 2013, which may limit the model's ability to capture recent patterns and trends of floods in Bangladesh.
+
+- Therefore, its important that more up-to-date data are collected on floods to improve the accuracy and reliability of the predictive models. Also, further analysis can be done in determining other relevant features with a greater effect flood prediction. Developing real time monitoring system which employs advanced procedures that provides data on remote sensing, river gauges and weather sensors  would help to enhance the model’s predictive power and reliability.
+
+- Overall, this research provided information on the efficacy of machine learning models in the prediction of floods, ongoing research and data collection efforts must be done to improve the accuracy and applicability of these models in real-world flood scenarios.
+
+# References
+
+  
